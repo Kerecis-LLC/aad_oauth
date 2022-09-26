@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'request/authorization_request.dart';
 import 'model/config.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_windows/webview_windows.dart' as WindowWebview;
 
 class RequestCode {
   final Config _config;
@@ -17,12 +20,22 @@ class RequestCode {
   Future<String?> requestCode() async {
     _code = null;
     final urlParams = _constructUrlParams();
-    var webView = WebView(
-      initialUrl: '${_authorizationRequest.url}?$urlParams',
-      javascriptMode: JavascriptMode.unrestricted,
-      navigationDelegate: _navigationDelegate,
-      backgroundColor: Colors.transparent,
-    );
+    var webView;
+    if (!kIsWeb && Platform.isWindows) {
+      final _controller = WindowWebview.WebviewController();
+      await _controller.initialize();
+      await _controller.setBackgroundColor(Colors.transparent);
+      await _controller
+          .setPopupWindowPolicy(WindowWebview.WebviewPopupWindowPolicy.allow);
+      await _controller.loadUrl('${_authorizationRequest.url}?$urlParams');
+      webView = WindowWebview.Webview(_controller);
+    } else {
+      webView = WebView(
+          initialUrl: '${_authorizationRequest.url}?$urlParams',
+          javascriptMode: JavascriptMode.unrestricted,
+          navigationDelegate: _navigationDelegate,
+          backgroundColor: Colors.transparent);
+    }
 
     await _config.navigatorKey.currentState!.push(
       MaterialPageRoute(
